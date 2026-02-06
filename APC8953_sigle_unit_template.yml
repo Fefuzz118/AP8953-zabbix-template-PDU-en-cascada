@@ -1,0 +1,388 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: 'Templates/Power'
+  templates:
+    - uuid: c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6
+      template: 'APC PDU 8953 Single Unit'
+      name: 'APC PDU 8953 Single Unit (rPDU2)'
+      description: |
+        Template para monitoreo de UNA SOLA regleta APC 8953.
+        
+        IMPORTANTE: Este template monitorea 1 PDU individual usando índices específicos.
+        Para cascada, crear múltiples hosts con diferentes índices de PDU.
+        
+        Configuración:
+        - Asignar este template a cada PDU física como un host separado
+        - Usar macros para especificar el índice de PDU (1, 2, 3, o 4)
+        - Configurar macros {$PDU.INDEX} y {$PDU.BANK.START}
+        
+        Ejemplo para 4 PDUs en cascada:
+        - Host 1: PDU-Rack-A1-Unit1 → {$PDU.INDEX}=1, {$PDU.BANK.START}=1
+        - Host 2: PDU-Rack-A1-Unit2 → {$PDU.INDEX}=2, {$PDU.BANK.START}=3
+        - Host 3: PDU-Rack-A1-Unit3 → {$PDU.INDEX}=3, {$PDU.BANK.START}=5
+        - Host 4: PDU-Rack-A1-Unit4 → {$PDU.INDEX}=4, {$PDU.BANK.START}=7
+        
+        Autor: Template generado para Zabbix 7.4.6
+        Fecha: 2026-02-03
+      groups:
+        - name: 'Templates/Power'
+      macros:
+        - macro: '{$PDU.INDEX}'
+          value: '1'
+          description: 'Índice de la PDU en la cascada (1, 2, 3, o 4)'
+        - macro: '{$PDU.BANK.START}'
+          value: '1'
+          description: 'Índice inicial del primer bank de esta PDU (1, 3, 5, o 7)'
+        - macro: '{$PDU.OUTLET.START}'
+          value: '1'
+          description: 'Índice inicial del primer outlet de esta PDU (típicamente múltiplo de 6 o 8)'
+        - macro: '{$PDU.OUTLET.COUNT}'
+          value: '8'
+          description: 'Cantidad de outlets en esta PDU (6, 8, 12, 16, 24)'
+      items:
+        # ===========================
+        # INFORMACIÓN DEL DISPOSITIVO
+        # ===========================
+        - uuid: c1234567890abcdef1234567890abcd1
+          name: 'Device Model'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.318.1.1.26.2.1.6.1
+          key: apc.pdu.device.model
+          delay: 1h
+          history: 7d
+          trends: 0
+          value_type: CHAR
+          description: 'Modelo del dispositivo PDU (compartido entre todas las unidades)'
+          tags:
+            - tag: Application
+              value: General
+        
+        - uuid: c1234567890abcdef1234567890abcd2
+          name: 'Device Name'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.318.1.1.26.2.1.8.1
+          key: apc.pdu.device.name
+          delay: 1h
+          history: 7d
+          trends: 0
+          value_type: CHAR
+          description: 'Nombre del dispositivo PDU (compartido)'
+          tags:
+            - tag: Application
+              value: General
+        
+        - uuid: c1234567890abcdef1234567890abcd3
+          name: 'Firmware Version'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.318.1.1.4.2.3
+          key: apc.pdu.firmware.version
+          delay: 1h
+          history: 7d
+          trends: 0
+          value_type: CHAR
+          description: 'Versión del firmware'
+          tags:
+            - tag: Application
+              value: General
+        
+        # ===========================
+        # MÉTRICAS DE ESTA PDU
+        # ===========================
+        - uuid: c1234567890abcdef1234567890abcd4
+          name: 'Power Consumption'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.4.3.1.5.{$PDU.INDEX}'
+          key: apc.pdu.power
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          units: 'kW'
+          description: 'Consumo de energía de esta PDU en kilovatios'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: Application
+              value: 'Power Metrics'
+        
+        - uuid: c1234567890abcdef1234567890abcd5
+          name: 'Load State'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.4.3.1.4.{$PDU.INDEX}'
+          key: apc.pdu.load.state
+          delay: 1m
+          history: 30d
+          value_type: UNSIGNED
+          description: |
+            Estado de carga de esta PDU:
+            1 = lowLoad
+            2 = normal
+            3 = nearOverload
+            4 = overload
+          valuemap:
+            name: 'APC PDU Load State'
+          tags:
+            - tag: Application
+              value: 'Power Metrics'
+        
+        - uuid: c1234567890abcdef1234567890abcd6
+          name: 'Input Current'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.4.3.1.9.{$PDU.INDEX}'
+          key: apc.pdu.input.current
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          units: A
+          description: 'Corriente de entrada total de esta PDU'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: 'Power Metrics'
+        
+        - uuid: c1234567890abcdef1234567890abcd7
+          name: 'Energy Accumulated'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.4.3.1.12.{$PDU.INDEX}'
+          key: apc.pdu.energy.accumulated
+          delay: 5m
+          history: 90d
+          value_type: FLOAT
+          units: 'kWh'
+          description: 'Energía acumulada de esta PDU'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: 'Power Metrics'
+        
+        - uuid: c1234567890abcdef1234567890abcd8
+          name: 'Apparent Power'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.4.3.1.16.{$PDU.INDEX}'
+          key: apc.pdu.apparent.power
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          units: VA
+          description: 'Potencia aparente de esta PDU'
+          tags:
+            - tag: Application
+              value: 'Power Metrics'
+        
+        - uuid: c1234567890abcdef1234567890abcd9
+          name: 'Power Factor'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.4.3.1.17.{$PDU.INDEX}'
+          key: apc.pdu.power.factor
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          description: 'Factor de potencia de esta PDU'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: Application
+              value: 'Power Metrics'
+        
+        # ===========================
+        # BANK A (primer bank de esta PDU)
+        # ===========================
+        - uuid: c1234567890abcdef1234567890abcda
+          name: 'Bank A: Current'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.8.3.1.5.{$PDU.BANK.START}'
+          key: apc.pdu.bank.a.current
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          units: A
+          description: 'Corriente del Bank A (primer bank)'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: 'Banks'
+            - tag: Bank
+              value: A
+        
+        - uuid: c1234567890abcdef1234567890abcdb
+          name: 'Bank A: Load State'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.8.3.1.4.{$PDU.BANK.START}'
+          key: apc.pdu.bank.a.load.state
+          delay: 1m
+          history: 30d
+          value_type: UNSIGNED
+          description: 'Estado de carga del Bank A'
+          valuemap:
+            name: 'APC PDU Load State'
+          tags:
+            - tag: Application
+              value: 'Banks'
+            - tag: Bank
+              value: A
+        
+        - uuid: c1234567890abcdef1234567890abcdc
+          name: 'Bank A: Voltage'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.8.3.1.6.{$PDU.BANK.START}'
+          key: apc.pdu.bank.a.voltage
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          units: V
+          description: 'Voltaje del Bank A'
+          tags:
+            - tag: Application
+              value: 'Banks'
+            - tag: Bank
+              value: A
+        
+        # ===========================
+        # BANK B (segundo bank de esta PDU)
+        # ===========================
+        - uuid: c1234567890abcdef1234567890abcdd
+          name: 'Bank B: Current'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.8.3.1.5.{$PDU.BANK.START}+1'
+          key: apc.pdu.bank.b.current
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          units: A
+          description: 'Corriente del Bank B (segundo bank)'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: 'Banks'
+            - tag: Bank
+              value: B
+        
+        - uuid: c1234567890abcdef1234567890abcde
+          name: 'Bank B: Load State'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.8.3.1.4.{$PDU.BANK.START}+1'
+          key: apc.pdu.bank.b.load.state
+          delay: 1m
+          history: 30d
+          value_type: UNSIGNED
+          description: 'Estado de carga del Bank B'
+          valuemap:
+            name: 'APC PDU Load State'
+          tags:
+            - tag: Application
+              value: 'Banks'
+            - tag: Bank
+              value: B
+        
+        - uuid: c1234567890abcdef1234567890abcdf
+          name: 'Bank B: Voltage'
+          type: SNMP_AGENT
+          snmp_oid: '.1.3.6.1.4.1.318.1.1.26.8.3.1.6.{$PDU.BANK.START}+1'
+          key: apc.pdu.bank.b.voltage
+          delay: 1m
+          history: 30d
+          value_type: FLOAT
+          units: V
+          description: 'Voltaje del Bank B'
+          tags:
+            - tag: Application
+              value: 'Banks'
+            - tag: Bank
+              value: B
+
+      discovery_rules:
+        # ===========================
+        # DISCOVERY: OUTLETS de esta PDU
+        # ===========================
+        - uuid: d1234567890abcdef1234567890abcd1
+          name: 'PDU Outlet Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#SNMPVALUE},.1.3.6.1.4.1.318.1.1.26.9.2.3.1.5]'
+          key: pdu.outlet.discovery
+          delay: 1h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#SNMPINDEX}'
+                value: '^({$PDU.OUTLET.START}|{$PDU.OUTLET.START}\+[0-9]+)$'
+                formulaid: A
+          description: |
+            Descubre los outlets de ESTA PDU específica.
+            Filtra por rango de índices basado en {$PDU.OUTLET.START}.
+          item_prototypes:
+            - uuid: i1234567890abcdef1234567890abcd1
+              name: 'Outlet {#SNMPINDEX}: Current'
+              type: SNMP_AGENT
+              snmp_oid: '.1.3.6.1.4.1.318.1.1.26.9.2.3.1.5.{#SNMPINDEX}'
+              key: 'apc.pdu.outlet[{#SNMPINDEX},current]'
+              delay: 2m
+              history: 30d
+              value_type: FLOAT
+              units: A
+              description: 'Corriente del outlet {#SNMPINDEX}'
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.1'
+              tags:
+                - tag: Application
+                  value: Outlets
+                - tag: Outlet
+                  value: '{#SNMPINDEX}'
+
+      valuemaps:
+        - uuid: v1234567890abcdef1234567890abcd1
+          name: 'APC PDU Load State'
+          mappings:
+            - value: '1'
+              newvalue: 'Low Load'
+            - value: '2'
+              newvalue: 'Normal'
+            - value: '3'
+              newvalue: 'Near Overload'
+            - value: '4'
+              newvalue: 'Overload'
+
+  graphs:
+    - uuid: g1234567890abcdef1234567890abcd1
+      name: 'Power Metrics Overview'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'APC PDU 8953 Single Unit'
+            key: 'apc.pdu.power'
+        - sortorder: '1'
+          color: F63100
+          item:
+            host: 'APC PDU 8953 Single Unit'
+            key: 'apc.pdu.apparent.power'
+    
+    - uuid: g1234567890abcdef1234567890abcd2
+      name: 'Bank Current Comparison'
+      graph_items:
+        - color: 2774A4
+          item:
+            host: 'APC PDU 8953 Single Unit'
+            key: 'apc.pdu.bank.a.current'
+        - sortorder: '1'
+          color: A54F10
+          item:
+            host: 'APC PDU 8953 Single Unit'
+            key: 'apc.pdu.bank.b.current'
